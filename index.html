@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor Solar Escalable</title>
+    <style>
+        :root {
+            --primary-bg: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #f59e0b;
+            --text: #f8fafc;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 500px;
+        }
+        h1 { font-size: 1.5rem; margin-top: 0; color: var(--accent); }
+        .config-info {
+            font-size: 0.85rem;
+            background: rgba(255,255,255,0.05);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .data-box {
+            background: rgba(255,255,255,0.03);
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid var(--accent);
+        }
+        .label { display: block; font-size: 0.75rem; text-transform: uppercase; opacity: 0.7; }
+        .value { font-size: 1.1rem; font-weight: bold; }
+        .loading { text-align: center; color: var(--accent); }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1 id="city-title">Datos Solares</h1>
+    
+    <div class="config-info" id="config-summary">
+        </div>
+
+    <div id="results" class="grid">
+        <p class="loading">Consultando API...</p>
+    </div>
+</div>
+
+<script>
+    // --- CONFIGURACIÓN ESCALABLE ---
+    const SOLAR_CONFIG = {
+        lat: 10.504128,
+        lng: -66.9352538,
+        tzid: "America/Caracas",
+        date: "today", // Puedes usar "today" o formato "YYYY-MM-DD" (ej: "2026-04-01")
+        city: "Caracas, Venezuela"
+    };
+
+    function buildUrl(config) {
+        const base = "https://api.sunrise-sunset.org/json";
+        return `${base}?lat=${config.lat}&lng=${config.lng}&tzid=${config.tzid}&date=${config.date}&formatted=1`;
+    }
+
+    async function fetchSolarData() {
+        const url = buildUrl(SOLAR_CONFIG);
+        const resultsContainer = document.getElementById('results');
+        const summaryContainer = document.getElementById('config-summary');
+        
+        try {
+            summaryContainer.innerHTML = `
+                📍 <b>Lat:</b> ${SOLAR_CONFIG.lat} | <b>Lng:</b> ${SOLAR_CONFIG.lng}<br>
+                📅 <b>Fecha:</b> ${SOLAR_CONFIG.date === 'today' ? new Date().toLocaleDateString() : SOLAR_CONFIG.date}<br>
+                🌎 <b>Zona:</b> ${SOLAR_CONFIG.tzid}
+            `;
+            document.getElementById('city-title').innerText = `Solar: ${SOLAR_CONFIG.city}`;
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.status !== "OK") throw new Error("Error en el API");
+
+            const r = data.results;
+            
+            // Mapeo de datos para mostrar
+            const fields = [
+                { label: "Amanecer", value: r.sunrise },
+                { label: "Atardecer", value: r.sunset },
+                { label: "Mediodía", value: r.solar_noon },
+                { label: "Luz del día", value: r.day_length },
+                { label: "Inicio Crepúsculo Civil", value: r.civil_twilight_begin },
+                { label: "Fin Crepúsculo Civil", value: r.civil_twilight_end },
+                { label: "Inicio Crepúsculo Náutico", value: r.nautical_twilight_begin },
+                { label: "Fin Crepúsculo Náutico", value: r.nautical_twilight_end },
+                { label: "Inicio Crepúsculo Astronómico", value: r.astronomical_twilight_begin },
+                { label: "Fin Crepúsculo Astronómico", value: r.astronomical_twilight_end }
+            ];
+
+            resultsContainer.innerHTML = fields.map(field => `
+                <div class="data-box">
+                    <span class="label">${field.label}</span>
+                    <span class="value">${field.value}</span>
+                </div>
+            `).join('');
+
+        } catch (error) {
+            resultsContainer.innerHTML = `<p style="color:red">Error: ${error.message}</p>`;
+        }
+    }
+
+    fetchSolarData();
+</script>
+
+</body>
+</html>
